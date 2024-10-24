@@ -46,3 +46,6 @@ probablemente separar en dos según consulta - mantenimiento
 así se podría obtener directamente los errores de servicio para mostrarlos en los
 toast (o en cualquier otra opción) que tenga el cliente, requiere re-estructurar
 gran parte del proyecto.
+
+# Imágenes de funcionalidad
+Ver la carpeta `ImagenesFuncionamiento/` para ver el cliente en acción.
