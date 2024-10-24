@@ -1,0 +1,156 @@
+﻿@page "/consulta-seguro/{codigoSeguro}"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject IToastService ToastService
+
+<div class="container mt-4">
+    @if (_cargando)
+    {
+        <div class="d-flex justify-content-center align-items-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_mensajeError))
+    {
+        <div class="alert alert-danger" role="alert">
+            @_mensajeError
+        </div>
+    }
+    else if (_seguro == null)
+    {
+        <div class="alert alert-warning" role="alert">
+            No se encontró ningún seguro con el código "@CodigoSeguro"
+        </div>
+    }
+    else
+    {
+        <h3 class="mb-4">Detalles del Seguro: @_seguro.Nombre</h3>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Información General</h5>
+                <dl class="row">
+                    <dt class="col-sm-3">Código:</dt>
+                    <dd class="col-sm-9">@_seguro.Codigo</dd>
+
+                    <dt class="col-sm-3">Monto Asegurado:</dt>
+                    <dd class="col-sm-9">@_seguro.SumaAsegurada.ToString("C")</dd>
+
+                    <dt class="col-sm-3">Prima:</dt>
+                    <dd class="col-sm-9">@_seguro.Prima.ToString("C")</dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (_asegurados != null && _asegurados.Any())
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Asegurados Registrados</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Cédula</th>
+                                    <th scope="col">Nombre</th>
+                                    <th scope="col">Teléfono</th>
+                                    <th scope="col">Edad</th>
+                                    <th scope="col">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var asegurado in _asegurados)
+                                {
+                                    <tr>
+                                        <td>@asegurado.Cedula</td>
+                                        <td>@asegurado.Nombre</td>
+                                        <td>@asegurado.Telefono</td>
+                                        <td>@asegurado.Edad</td>
+                                        <td>
+                                            <button @onclick="() => VerDetallesAsegurado(asegurado.Id)"
+                                                    class="btn btn-primary btn-sm">
+                                                Ver Detalles
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info" role="alert">
+                No hay asegurados registrados para este seguro.
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string CodigoSeguro { get; set; }
+
+    private Seguro _seguro;
+    private List<Asegurado> _asegurados;
+    private bool _cargando = true;
+    private string _mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(CodigoSeguro))
+        {
+            _mensajeError = "El código del seguro es requerido.";
+            _cargando = false;
+            return;
+        }
+
+        try
+        {
+            await CargarDatos();
+        }
+        catch (HttpRequestException ex)
+        {
+            _mensajeError = "Error al conectar con el servidor. Por favor, intente más tarde.";
+            Console.WriteLine($"Error de conexión: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _mensajeError = "Ocurrió un error inesperado al cargar los datos.";
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    private async Task CargarDatos()
+    {
+        var seguros = await Http.GetFromJsonAsync<List<Seguro>>($"{EstadoGeneral.BaseApiUrl}/seguro");
+        _seguro = seguros?.FirstOrDefault(s => s.Codigo.Equals(CodigoSeguro, StringComparison.OrdinalIgnoreCase));
+
+        if (_seguro != null)
+        {
+            try
+            {
+                _asegurados = await Http.GetFromJsonAsync<List<Asegurado>>($"{EstadoGeneral.BaseApiUrl}/seguro/asegurados/{CodigoSeguro}");
+            }
+            catch (Exception ex)
+            {
+                ToastService.ShowError("Error al cargar la lista de asegurados");
+                _asegurados = new List<Asegurado>();
+                Console.WriteLine($"Error al cargar asegurados: {ex.Message}");
+            }
+        }
+    }
+
+    private void VerDetallesAsegurado(int aseguradoId)
+    {
+        NavigationManager.NavigateTo($"/asegurado/{aseguradoId}");
+    }
+}

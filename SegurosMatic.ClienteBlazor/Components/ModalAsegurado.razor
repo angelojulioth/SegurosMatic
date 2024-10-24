@@ -1,0 +1,60 @@
+﻿@if (Asegurado != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@((Asegurado.Id == 0 ? "Nuevo Asegurado" : "Editar Asegurado"))</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Cancelar"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@Asegurado" OnValidSubmit="GuardarAsegurado">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label" for="cedula">Cédula</label>
+                            <InputText @bind-Value="Asegurado.Cedula" class="form-control" id="cedula" placeholder="Cédula" />
+                            <ValidationMessage For="@(() => Asegurado.Cedula)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="nombre">Nombre</label>
+                            <InputText @bind-Value="Asegurado.Nombre" class="form-control" id="nombre" placeholder="Nombre" />
+                            <ValidationMessage For="@(() => Asegurado.Nombre)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="telefono">Teléfono</label>
+                            <InputText @bind-Value="Asegurado.Telefono" class="form-control" id="telefono" placeholder="Teléfono" />
+                            <ValidationMessage For="@(() => Asegurado.Telefono)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="edad">Edad</label>
+                            <InputNumber @bind-Value="Asegurado.Edad" class="form-control" id="edad" placeholder="Edad" />
+                            <ValidationMessage For="@(() => Asegurado.Edad)" />
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                            <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Asegurado Asegurado { get; set; } = new Asegurado();
+
+    [Parameter] public EventCallback<Asegurado> OnGuardar { get; set; }
+
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private async Task GuardarAsegurado()
+    {
+        await OnGuardar.InvokeAsync(Asegurado);
+    }
+
+    private async Task Cancelar()
+    {
+        await OnCancelar.InvokeAsync();
+    }
+}

@@ -1,0 +1,98 @@
+﻿@* @inherits ModalBase *@
+@using SegurosMaticAPI.Modelos
+@inject HttpClient Http
+@inject IToastService ToastService
+
+<div class="modal fade show d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    @if (Seguro.Id == 0)
+
+                    {
+                        <text>Nuevo Seguro</text>
+                    }
+
+                    else
+
+                    {
+                        <text>Editar Seguro</text>
+                    }
+                </h5>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="Cancelar"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@Seguro" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="form-label" for="nombre">Nombre</label>
+                        <InputText @bind-Value="Seguro.Nombre" class="form-control" id="nombre" placeholder="Nombre" />
+                        <ValidationMessage For="@(() => Seguro.Nombre)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="codigo">Código</label>
+                        <InputText @bind-Value="Seguro.Codigo" class="form-control" id="codigo" placeholder="Código" />
+                        <ValidationMessage For="@(() => Seguro.Codigo)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="sumaAsegurada">Suma Asegurada</label>
+                        <InputNumber @bind-Value="Seguro.SumaAsegurada" class="form-control" id="sumaAsegurada" placeholder="Suma Asegurada" />
+                        <ValidationMessage For="@(() => Seguro.SumaAsegurada)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="prima">Prima</label>
+                        <InputNumber @bind-Value="Seguro.Prima" class="form-control" id="prima" placeholder="Prima" />
+                        <ValidationMessage For="@(() => Seguro.Prima)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="prima">Edad Mínima</label>
+                        <InputNumber @bind-Value="Seguro.EdadMinima" class="form-control" id="edadMinima" placeholder="0" />
+                        <ValidationMessage For="@(() => Seguro.EdadMinima)" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="prima">Edad Máxima</label>
+                        <InputNumber @bind-Value="Seguro.EdadMaxima" class="form-control" id="edadMaxima" placeholder="0" />
+                        <ValidationMessage For="@(() => Seguro.EdadMaxima)" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                        <button type="button" class="btn btn-secondary" @onclick="Cancelar">Cancelar</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Seguro Seguro { get; set; } = new Seguro();
+
+
+
+    [Parameter] public EventCallback<Seguro> OnGuardar { get; set; }
+
+
+
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+
+
+    private async Task Guardar()
+
+    {
+
+        await OnGuardar.InvokeAsync(Seguro);
+
+    }
+
+
+
+    private async Task Cancelar()
+
+    {
+
+        await OnCancelar.InvokeAsync();
+
+    }
+}

@@ -1,0 +1,68 @@
+﻿@page "/"
+@inject NavigationManager NavigationManager
+
+<div class="container mt-5">
+    <h1 class="display-4 mb-4">Consultorio de Seguros</h1>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Consulta por Cédula</h2>
+                    <div class="input-group">
+                        <input @bind="cedula" class="form-control" placeholder="Ingrese la cédula" />
+                        <button @onclick="BuscarPorCedula" class="btn btn-primary">
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="h5 card-title">Consulta por Código de Seguro</h2>
+                    <div class="input-group">
+                        <input @bind="codigoSeguro" class="form-control" placeholder="Ingrese el código" />
+                        <button @onclick="BuscarPorSeguro" class="btn btn-primary">
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button @onclick="@(() => NavigationManager.NavigateTo("/seguros"))"
+                class="btn btn-success me-2">
+            Gestionar Seguros
+        </button>
+        <button @onclick="@(() => NavigationManager.NavigateTo("/asegurados"))"
+                class="btn btn-success">
+            Gestionar Asegurados
+        </button>
+    </div>
+</div>
+
+@code {
+    private string cedula = "";
+    private string codigoSeguro = "";
+
+    private void BuscarPorCedula()
+    {
+        if (!string.IsNullOrWhiteSpace(cedula))
+        {
+            NavigationManager.NavigateTo($"/consulta-cedula/{cedula}");
+        }
+    }
+
+    private void BuscarPorSeguro()
+    {
+        if (!string.IsNullOrWhiteSpace(codigoSeguro))
+        {
+            NavigationManager.NavigateTo($"/consulta-seguro/{codigoSeguro}");
+        }
+    }
+}

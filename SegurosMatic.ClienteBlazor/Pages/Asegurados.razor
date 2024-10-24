@@ -1,0 +1,367 @@
+﻿@page "/asegurados"
+@inject HttpClient Http
+@inject IToastService ToastService
+@using SegurosMatic.ClienteBlazor.Components
+
+@* pagina asegurados *@
+<div class="container mt-5">
+    <h1 class="display-4 mb-4">Gestión de Asegurados</h1>
+
+    <div class="mb-4 d-flex gap-3">
+        <button @onclick="MostrarModal" class="btn btn-success">
+            Nuevo Asegurado
+        </button>
+        <InputFile title="Carga un archivo *.csv" OnChange="CargarArchivo" accept=".csv,.xlsx" class="btn btn-primary" />
+    </div>
+
+    @if (asegurados == null)
+    {
+        <div class="d-flex justify-content-center align-items-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!asegurados.Any())
+    {
+        <div class="text-center py-4 text-muted">
+            No hay asegurados registrados. Puede crear uno nuevo o cargar un archivo.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Cédula</th>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">Teléfono</th>
+                        <th scope="col">Edad</th>
+                        <th scope="col" class="text-center">Seguros</th>
+                        <th scope="col" class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var asegurado in asegurados)
+                    {
+                        <tr>
+                            <td>@asegurado.Cedula</td>
+                            <td>@asegurado.Nombre</td>
+                            <td>@asegurado.Telefono</td>
+                            <td>@asegurado.Edad</td>
+                            <td class="text-center">
+                                <button @onclick="() => AsignarSeguros(asegurado)" class="btn btn-sm btn-secondary">
+                                    Ver Seguros (@(asegurado.Seguros?.Count ?? 0))
+                                </button>
+                            </td>
+                            <td class="text-center">
+                                <button @onclick="() => EditarAsegurado(asegurado)" class="btn btn-sm btn-primary">
+                                    Editar
+                                </button>
+                                <button @onclick="() => ConfirmarEliminar(asegurado)" class="btn btn-sm btn-danger ms-2">
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (mostrarModal)
+    {
+        <ModalAsegurado Asegurado="aseguradoActual" OnGuardar="GuardarAsegurado" OnCancelar="CerrarModal" />
+    }
+
+    @if (mostrarModalSeguros)
+    {
+        <ModalAsignarSeguros Asegurado="aseguradoActual" Seguros="@ConvertToViewModel(segurosDisponibles, aseguradoActual.Seguros)" OnGuardar="GuardarAsignacionSeguros" OnCancelar="CerrarModalSeguros" />
+    }
+
+    @if (mostrarConfirmacion)
+    {
+        <div class="modal fade show d-block" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CancelarEliminar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>¿Está seguro que desea eliminar al asegurado @aseguradoAEliminar?.Nombre? Esta acción no se puede deshacer.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CancelarEliminar">Cancelar</button>
+                        <button type="button" class="btn btn-danger" @onclick="EliminarAseguradoConfirmado">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Asegurado> asegurados;
+    private List<Seguro> segurosDisponibles;
+    private bool mostrarModal;
+    private bool mostrarModalSeguros;
+    private bool mostrarConfirmacion;
+    private Asegurado aseguradoActual;
+    private Asegurado aseguradoAEliminar;
+    
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsegurados();
+        await CargarSeguros();
+    }
+
+    private List<ModalAsignarSeguros.SeguroViewModel> ConvertToViewModel(List<Seguro> disponibles, List<Seguro> asignados)
+    {
+        if (disponibles == null) return new List<ModalAsignarSeguros.SeguroViewModel>();
+
+        return disponibles.Select(seguro => new ModalAsignarSeguros.SeguroViewModel
+            {
+                Seguro = seguro,
+                IsSelected = asignados?.Any(s => s.Id == seguro.Id) ?? false
+            }).ToList();
+    }
+
+    private async Task CargarAsegurados()
+    {
+        try
+        {
+            asegurados = await Http.GetFromJsonAsync<List<Asegurado>>($"{EstadoGeneral.BaseApiUrl}/asegurado");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al cargar los asegurados");
+            Console.WriteLine($"Error al cargar los asegurados: {ex.Message}");
+        }
+    }
+
+    private async Task CargarSeguros()
+    {
+        try
+        {
+            segurosDisponibles = await Http.GetFromJsonAsync<List<Seguro>>($"{EstadoGeneral.BaseApiUrl}/seguro");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al cargar los seguros disponibles");
+            Console.WriteLine($"Error al cargar seguros: {ex.Message}");
+        }
+    }
+
+    private async Task CargarArchivo(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var contenido = new MultipartFormDataContent();
+            var contenidoArchivo = new StreamContent(e.File.OpenReadStream(maxAllowedSize: 1024 * 1024 * 2)); // 2MB max
+            contenido.Add(contenidoArchivo, "archivo", e.File.Name);
+
+            var response = await Http.PostAsync($"{EstadoGeneral.BaseApiUrl}/asegurado/carga-masiva", contenido);
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Archivo procesado correctamente");
+                await CargarAsegurados();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                ToastService.ShowError($"Error al procesar el archivo: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al cargar el archivo");
+            Console.WriteLine($"Error al cargar el archivo: {ex.Message}");
+        }
+    }
+
+    private void MostrarModal()
+    {
+        aseguradoActual = new Asegurado();
+        mostrarModal = true;
+    }
+
+    private void EditarAsegurado(Asegurado asegurado)
+    {
+        aseguradoActual = new Asegurado
+            {
+                Id = asegurado.Id,
+                Cedula = asegurado.Cedula,
+                Nombre = asegurado.Nombre,
+                Telefono = asegurado.Telefono,
+                Edad = asegurado.Edad,
+                Seguros = asegurado.Seguros?.ToList() ?? new List<Seguro>()
+            };
+        mostrarModal = true;
+    }
+
+    private async Task AsignarSeguros(Asegurado asegurado)
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<Asegurado>($"{EstadoGeneral.BaseApiUrl}/asegurado/{asegurado.Id}");
+            if (response != null)
+            {
+                aseguradoActual = response;
+                // asegurarse que seguros disponibles haya cargado
+                if (segurosDisponibles == null)
+                {
+                    await CargarSeguros();
+                }
+                mostrarModalSeguros = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al cargar los seguros del asegurado");
+            Console.WriteLine($"Error cargando asegurado seguros: {ex.Message}");
+        }
+    }
+
+    private async Task GuardarAsegurado(Asegurado asegurado)
+    {
+        try
+        {
+            HttpResponseMessage response;
+            if (asegurado.Id == 0)
+            {
+                response = await Http.PostAsJsonAsync($"{EstadoGeneral.BaseApiUrl}/asegurado", asegurado);
+                if (response.IsSuccessStatusCode)
+                    ToastService.ShowSuccess("Asegurado creado exitosamente");
+            }
+            else
+            {
+                response = await Http.PutAsJsonAsync($"{EstadoGeneral.BaseApiUrl}/asegurado/{asegurado.Id}", asegurado);
+                if (response.IsSuccessStatusCode)
+                    ToastService.ShowSuccess("Asegurado actualizado exitosamente");
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                await CargarAsegurados();
+                CerrarModal();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                ToastService.ShowError($"Error: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al guardar el asegurado");
+            Console.WriteLine($"Error al guardar el asegurado: {ex.Message}");
+        }
+    }
+
+    private void ConfirmarEliminar(Asegurado asegurado)
+    {
+        aseguradoAEliminar = asegurado;
+        mostrarConfirmacion = true;
+    }
+
+    private async Task EliminarAseguradoConfirmado()
+    {
+        if (aseguradoAEliminar == null) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"{EstadoGeneral.BaseApiUrl}/asegurado/{aseguradoAEliminar.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Asegurado eliminado exitosamente");
+                await CargarAsegurados();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                ToastService.ShowError($"Error al eliminar: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al eliminar el asegurado");
+            Console.WriteLine($"Error al eliminar el asegurado: {ex.Message}");
+        }
+        finally
+        {
+            CancelarEliminar();
+        }
+    }
+
+    private async Task GuardarAsignacionSeguros(List<Seguro> segurosSeleccionados)
+    {
+        try
+        {
+            if (aseguradoActual == null || segurosSeleccionados == null) return;
+            //TODO
+            /*
+             * No me parece que esto funcione de la manera más adecuada
+             * En lugar de eliminar a modo de "fuerza bruta" todos los seguros
+             * se debería mejor de agregar una columna de "Estado" y "Última Fecha Actualización"
+             * A modo que el barrido deba agregar los nuevos seguros, y si uno ya
+             * se encuentra agregado a un usuario, sólo cambia el estado a Inactivo
+             * De esta forma se garantiza que al haber un problema se mantenga la lista
+             * de seguros que previamente se le pudieron haber asignado a un usuario
+             * con su respectiva fecha de actualización, esto también serviría para
+             * auditar
+             */
+
+            // remueve todas las asignaciones existentes a seguros
+            var deleteRP = await Http.DeleteAsync($"{EstadoGeneral.BaseApiUrl}/asegurado/{aseguradoActual.Id}/seguros");
+
+            // asigna la nueva lista de seguros según se ha seleccionado
+            foreach (var seguro in segurosSeleccionados)
+            {
+                var response = await Http.PostAsync(
+                    $"{EstadoGeneral.BaseApiUrl}/asegurado/{aseguradoActual.Id}/seguros/{seguro.Id}",
+                    null);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"Error al asignar seguro {seguro.Nombre}");
+                }
+            }
+
+            ToastService.ShowSuccess("Seguros asignados correctamente");
+            await CargarAsegurados();
+            CerrarModalSeguros();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al asignar seguros");
+            Console.WriteLine($"Error al asignar seguros: {ex.Message}");
+        }
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+        aseguradoActual = null;
+    }
+
+    private void CerrarModalSeguros()
+    {
+        mostrarModalSeguros = false;
+        aseguradoActual = null;
+    }
+
+    private void CancelarEliminar()
+    {
+        mostrarConfirmacion = false;
+        aseguradoAEliminar = null;
+    }
+
+    public class SeguroViewModel
+    {
+        public Seguro Seguro { get; set; }
+        public bool IsSelected { get; set; }
+    }
+}

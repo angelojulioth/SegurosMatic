@@ -1,0 +1,162 @@
+﻿@page "/seguros"
+@inject HttpClient Http
+@inject IToastService ToastService
+@using SegurosMatic.ClienteBlazor.Components
+
+<div class="container mt-5">
+    <h1 class="display-4 mb-4">Gestión de Seguros</h1>
+
+    <div class="mb-4">
+        <button @onclick="MostrarModal" class="btn btn-success">
+            Nuevo Seguro
+        </button>
+    </div>
+
+    @if (seguros == null)
+    {
+        <p>Cargando...</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th scope="col">Código</th>
+                        <th scope="col">Nombre</th>
+                        <th scope="col">Suma Asegurada</th>
+                        <th scope="col">Prima</th>
+                        <th scope="col">Edad Mínima</th>
+                        <th scope="col">Edad Máxima</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var seguro in seguros)
+                    {
+                        <tr>
+                            <td>@seguro.Codigo</td>
+                            <td>@seguro.Nombre</td>
+                            <td>@seguro.SumaAsegurada.ToString("C")</td>
+                            <td>@seguro.Prima.ToString("C")</td>
+                            <td>@seguro.EdadMinima</td>
+                            <td>@seguro.EdadMaxima</td>
+                            <td>
+                                <button @onclick="() => EditarSeguro(seguro)"
+                                        class="btn btn-primary btn-sm">
+                                    Editar
+                                </button>
+                                <button @onclick="() => EliminarSeguro(seguro.Id)"
+                                        class="btn btn-danger btn-sm ms-2">
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (mostrarModal)
+    {
+        <ModalSeguro Seguro="seguroActual"
+                     OnGuardar="GuardarSeguro"
+                     OnCancelar="CerrarModal" />
+    }
+</div>
+
+@code {
+    private List<Seguro> seguros;
+    private bool mostrarModal;
+    private Seguro seguroActual;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSeguros();
+    }
+
+    private async Task CargarSeguros()
+    {
+        try
+        {
+            seguros = await Http.GetFromJsonAsync<List<Seguro>>($"{EstadoGeneral.BaseApiUrl}/seguro");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al cargar los seguros");
+        }
+    }
+
+    private void MostrarModal()
+    {
+        seguroActual = new Seguro();
+        mostrarModal = true;
+    }
+
+    private void EditarSeguro(Seguro seguro)
+    {
+        seguroActual = new Seguro
+            {
+                Id = seguro.Id,
+                Codigo = seguro.Codigo,
+                Nombre = seguro.Nombre,
+                SumaAsegurada = seguro.SumaAsegurada,
+                Prima = seguro.Prima,
+                EdadMinima = seguro.EdadMinima,
+                EdadMaxima = seguro.EdadMaxima
+            };
+        mostrarModal = true;
+    }
+
+    private async Task GuardarSeguro(Seguro seguro)
+    {
+        try
+        {
+            if (seguro.Id == 0)
+            {
+                await Http.PostAsJsonAsync($"{EstadoGeneral.BaseApiUrl}/seguro", seguro);
+                ToastService.ShowSuccess("Seguro creado exitosamente");
+            }
+            else
+            {
+                await Http.PutAsJsonAsync($"{EstadoGeneral.BaseApiUrl}/seguro/{seguro.Id}", seguro);
+                ToastService.ShowSuccess("Seguro actualizado exitosamente");
+            }
+
+            await CargarSeguros();
+            CerrarModal();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al guardar el seguro");
+        }
+    }
+
+    private async Task EliminarSeguro(int id)
+    {
+        try
+        {
+            // TODO envolver respuestas que tomen mensaje de error desde la base de datos para mostrar el
+            // mensaje de error de los SP del lado del cliente
+            var respuesta = await Http.DeleteAsync($"{EstadoGeneral.BaseApiUrl}/seguro/{id}");
+            if (respuesta.IsSuccessStatusCode)
+            {
+                ToastService.ShowSuccess("Seguro eliminado exitosamente");
+                await CargarSeguros();
+            }
+            else
+                ToastService.ShowError("No se ha eliminado el seguro, es probable que aún esté siendo asignado a un usuario");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al eliminar el seguro");
+        }
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+        seguroActual = null;
+    }
+}

@@ -1,0 +1,90 @@
+﻿@page "/consulta-cedula/{cedula}"
+@inject HttpClient Http
+@inject IToastService ToastService
+
+<div class="container mt-5">
+    <h1 class="display-4 mb-4">Consulta por Cédula</h1>
+
+    @if (asegurado == null)
+    {
+        <p>Cargando...</p>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title h5 mb-4">Información del Asegurado</h2>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p class="fw-bold">Cédula:</p>
+                        <p>@asegurado.Cedula</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="fw-bold">Nombre:</p>
+                        <p>@asegurado.Nombre</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="fw-bold">Teléfono:</p>
+                        <p>@asegurado.Telefono</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="fw-bold">Edad:</p>
+                        <p>@asegurado.Edad</p>
+                    </div>
+                </div>
+
+                <h3 class="h6 mt-4 mb-3">Seguros Asociados</h3>
+                @if (asegurado.Seguros?.Any() == true)
+                {
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th scope="col">Código</th>
+                                <th scope="col">Nombre</th>
+                                <th scope="col">Suma Asegurada</th>
+                                <th scope="col">Prima</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var seguro in asegurado.Seguros)
+                            {
+                                <tr>
+                                    <td>@seguro.Codigo</td>
+                                    <td>@seguro.Nombre</td>
+                                    <td>@seguro.SumaAsegurada.ToString("C")</td>
+                                    <td>@seguro.Prima.ToString("C")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p>No tiene seguros asociados.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Cedula { get; set; }
+    private Asegurado asegurado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            string endpoint = $"{EstadoGeneral.BaseApiUrl}/asegurado/cedula/{Cedula}";
+            asegurado = await Http.GetFromJsonAsync<Asegurado>(endpoint);
+            if (asegurado == null)
+            {
+                ToastService.ShowError("No se encontró el asegurado");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Error al cargar la información del asegurado");
+        }
+    }
+}
