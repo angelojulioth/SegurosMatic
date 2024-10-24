@@ -28,3 +28,18 @@ con las tablas como con los stored procedures necesarios.
 De no ser este el caso, debería de haber un archivo de respaldo de la base de datos
 para que sea cargado en el motor de SQL Server que corresponda al entorno que
 deseas usar.
+
+Ver archivo `base_de_datos.sql`.
+
+## Prueba de carga masiva por medio de un archivo
+Se ha elegido el formato `*.csv` para realizar cargas masivas de clientes.
+Ver archivo `prueba_carga_masiva.csv` para realizar pruebas.
+
+## Opciones de mejoras actuales (checklist)
+- Colocar toda la funcionalidad en un único stored procedure de mantenimiento /
+probablemente separar en dos según consulta - mantenimiento
+- Agregar validación con fluent validation
+- Envolver Consultas y Respuestas en una clase superior que maneje ciertos datos
+así se podría obtener directamente los errores de servicio para mostrarlos en los
+toast (o en cualquier otra opción) que tenga el cliente, requiere re-estructurar
+gran parte del proyecto.
