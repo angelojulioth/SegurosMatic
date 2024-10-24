@@ -1,4 +1,7 @@
 # SegurosMatic
+De preferencia revisar en Visual Studio 2022, no he confirmado que desde
+JetBrains Rider se estén lanzando al mismo tiempo ambos proyectos (API/Cliente)
+
 ## Carpetas
 - SegurosMatic/ contiene la API web en dotnet
 - SegurosMatic.ClienteBlazor/ contiene el cliente en Blazor Web Assembly
